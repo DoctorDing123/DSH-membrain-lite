@@ -153,11 +153,11 @@ POST /tick
       config:
         serverName: membrain
         transport: stdio
-        command: 'C:\Python312\python.exe'
+        command: 'C:\Python312\python.exe'          # 换成你自己的：Windows 用 where python，macOS/Linux 用 which python3
         args:
           - '-m'
           - 'membrain.mcp'
-        cwd: 'C:\path\to\membrain-lite'
+        cwd: 'C:\path\to\membrain-lite'             # 换成你解压/克隆的仓库路径
         env:
           PYTHONIOENCODING: 'utf-8'
           MEMBRAIN_HOME: 'C:\path\to\membrain-lite\.membrain'
