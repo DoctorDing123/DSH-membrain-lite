@@ -130,6 +130,65 @@ POST /tick
 
 ---
 
+## 装进 DSH / Claude Desktop（MCP）
+
+上面那段是「自己写代码接」。如果你用的是支持 MCP 的客户端（DeepSeek Harness、Claude Desktop 等），
+不用写代码 —— 把 `membrain.mcp` 当成一个 stdio MCP server 挂上去就行，工具会以
+`mcp__membrain__remember` / `mcp__membrain__recall` / `mcp__membrain__brief` 出现。
+
+它只用标准库实现，**不需要 `pip install mcp`**。
+
+**DeepSeek Harness** —— 编辑 `~/.dsh/profiles/web/cordis.patch.yml`，在末尾加一段：
+
+```yaml
+- insert:
+    - id: mcp-membrain-lite
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: membrain
+        transport: stdio
+        command: 'C:\Python312\python.exe'
+        args:
+          - '-m'
+          - 'membrain.mcp'
+        cwd: 'C:\path\to\membrain-lite'
+        env:
+          PYTHONIOENCODING: 'utf-8'
+          MEMBRAIN_HOME: 'C:\path\to\membrain-lite\.membrain'
+        toolCallTimeoutMs: 60000
+```
+
+`serverName` 不能和已有的重名（比如你已经挂了 `memory`，这里就用 `membrain`）。
+改完重启 DSH（或让它热重载），工具列表里就会出现 `membrain` 这一家。
+
+**Claude Desktop** —— `claude_desktop_config.json`：
+
+```json
+{
+  "mcpServers": {
+    "membrain": {
+      "command": "C:/Python312/python.exe",
+      "args": ["-m", "membrain.mcp"],
+      "cwd": "C:/path/to/membrain-lite",
+      "env": { "MEMBRAIN_HOME": "C:/path/to/membrain-lite/.membrain" }
+    }
+  }
+}
+```
+
+**自测**（不装客户端也能验证协议通不通）：
+
+```bash
+printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"probe","version":"0"}}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+| python -m membrain.mcp
+```
+
+正常会吐两行 JSON：先是 `serverInfo`，再是 5 个工具（remember / recall / brief / tick / stats）。
+
+---
+
 ## 话术模板
 
 `prompts/` 下是配套的基础话术，直接抄进你的 system prompt：
@@ -158,6 +217,7 @@ membrain/
   mirror.py    导出成人能读的 markdown（记忆速查、人物、话题、日记）
   api.py       标准库 HTTP 服务
   cli.py       命令行
+  mcp.py       MCP server（stdio，零依赖，给 DSH / Claude Desktop 用）
   evalrun.py   评估（recall@1 / @3）
 prompts/       五份话术模板
 data/          seed_demo.jsonl 示例数据（29 条）
