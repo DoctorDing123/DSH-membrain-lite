@@ -14,7 +14,7 @@
 
 零依赖可跑（纯标准库 + SQLite），2 分钟能看到效果。
 
-> 🤖 **如果你是一个 AI agent（DSH / Claude / Codex / Cursor），先读 [`docs/AGENT-GUIDE.md`](docs/AGENT-GUIDE.md)。**
+> 🤖 **如果你是一个 AI agent（DSH / Claude / Codex / Cursor），先读 [`docs/AGENT-GUIDE.md`](docs/AGENT-GUIDE.md)（中文）或 [`docs/AGENT-GUIDE.en.md`](docs/AGENT-GUIDE.en.md)（English）。**
 > 那里面是给机器看的：怎么装、文件怎么摆、什么该记什么不该记、怎么调参、
 > 以及**装完之后该跟你的主人说什么**。这份 README 是给人看的。
 
@@ -199,7 +199,10 @@ printf '%s\n' \
 
 如果你不想自己动手，可以把仓库链接丢给你的 AI（DSH / Claude / Codex 都行），让它读：
 
-**[`docs/AGENT-GUIDE.md`](docs/AGENT-GUIDE.md) —— 写给 AI agent 的安装与维护指南**
+**[`docs/AGENT-GUIDE.md`](docs/AGENT-GUIDE.md) —— 写给 AI agent 的安装与维护指南（中文）**
+**[`docs/AGENT-GUIDE.en.md`](docs/AGENT-GUIDE.en.md) —— Agent Install & Maintenance Guide (English)**
+
+两份内容逐节对应，按你的 agent 习惯的语言挑一份就行；每份顶部都链着另一份。
 
 那里面是机器视角的完整流程：
 
@@ -249,7 +252,7 @@ data/          seed_demo.jsonl 示例数据（29 条）
 eval/          cases.jsonl 评估集
 tests/         单元测试
 examples/radial/  记忆放射图网页（零依赖）
-docs/          架构说明、隐私说明、**给 AI agent 的安装指南**
+docs/          架构说明、隐私说明、**给 AI agent 的安装指南（中 / 英）**
 ```
 
 ---

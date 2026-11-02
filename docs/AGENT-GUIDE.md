@@ -3,6 +3,8 @@
 > 这份文档是写给**另一个 AI（DSH / Claude / Codex / Cursor）**看的，不是写给人看的。
 > 如果你是那个 agent：照着做，别自由发挥；做完之后，**用第 7 节的话转告你的主人**。
 > 如果你是人在读：直接看 [README](../README.md) 的「三分钟上手」就行。
+>
+> English: **[AGENT-GUIDE.en.md](AGENT-GUIDE.en.md)**
 
 ---
 
