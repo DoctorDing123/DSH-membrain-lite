@@ -13,6 +13,8 @@
 - 私人称呼：只查你自己加进 DENY_NAMES 的词
 - 凭据：Bearer / access_token / cookie / sk- / api_key
 - 号码：11 位手机号；以及**同一行带 qq/群号/group/uid 关键词**的 5-12 位数字
+- 本机路径：`C:/Users/<你的用户名>`、`/home/<你>`、`/Users/<你>` 这类绝对路径
+  （示例里请写 `C:/path/to/...`、`~/...`、`<you>`；这条规则的由来见 docs/PRIVACY.md）
 """
 from __future__ import annotations
 
@@ -48,6 +50,12 @@ SECRET_PATTERNS = [
 QQ_CTX = re.compile(r"(?i)\b(qq|群号|group[_ ]?id|uid|账号|号码)\b")
 PHONE = re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)")
 DIGITS = re.compile(r"(?<![\d.])\d{5,12}(?![\d.])")
+
+# 4) 本机绝对路径（泄露 Windows 用户名 / 家目录名）
+#    `C:\Users\<you>`、`/home/<you>`、`/Users/<you>` 这种“真有名字”的才算命中，
+#    `<you>` / `<你的用户名>` / `${HOME}` / `~` 这类占位符不算。
+WIN_HOME = re.compile(r"[A-Za-z]:\\{1,2}Users\\{1,2}(?![<$\{])[^\\\s'\"]{1,}")
+NIX_HOME = re.compile(r"/(?:home|Users)/(?![<$\{])[^/\s'\"]{1,}")
 
 
 def iter_text_files():
@@ -90,6 +98,9 @@ def scan() -> list[str]:
                 m = DIGITS.search(line)
                 if m:
                     problems.append(f"{rel}:{i}: 疑似 QQ 号/群号: {m.group(0)}")
+            m = WIN_HOME.search(line) or NIX_HOME.search(line)
+            if m:
+                problems.append(f"{rel}:{i}: 疑似本机家目录路径: {m.group(0)}")
     return problems
 
 
