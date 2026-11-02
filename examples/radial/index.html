@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>记忆放射图 · membrain-lite</title>
+<style>
+  :root{
+    --bg:#080b14; --ink:#dfe7f5; --dim:#7f8ba3;
+    --e:#5b9dff; --f:#f5c04a; --r:#b07cff; --s:#4fd1a5; --l:#ff8f6b; --p:#8fa0bb;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:radial-gradient(circle at 50% 45%,#121a2e 0%,#080b14 62%,#05070d 100%);
+    color:var(--ink);font:14px/1.6 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden}
+  canvas{display:block;position:fixed;inset:0;touch-action:none}
+  .hud{position:fixed;pointer-events:none}
+  #title{left:22px;top:18px}
+  #title h1{margin:0;font-size:17px;letter-spacing:.5px;font-weight:600}
+  #title h1 b{color:#66e0b0}
+  #title p{margin:4px 0 0;color:var(--dim);font-size:12px}
+  #legend{right:18px;top:18px;text-align:right;font-size:12px;pointer-events:auto}
+  #legend div{display:flex;align-items:center;gap:7px;justify-content:flex-end;padding:2px 0;cursor:pointer;opacity:.95}
+  #legend div.off{opacity:.3}
+  #legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+  #bar{left:22px;bottom:16px;font-size:12px;color:var(--dim);pointer-events:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  #bar input{background:#0e1524;border:1px solid #22304a;color:var(--ink);border-radius:8px;padding:6px 10px;width:190px;outline:none}
+  #bar button{background:#101a2b;border:1px solid #22304a;color:var(--ink);border-radius:8px;padding:6px 11px;cursor:pointer}
+  #bar button.on{border-color:#3d6fa8;background:#12233a}
+  #tip{position:fixed;max-width:330px;background:rgba(10,16,28,.96);border:1px solid #26374f;border-radius:10px;
+    padding:9px 11px;font-size:12.5px;line-height:1.55;display:none;pointer-events:none;z-index:9;box-shadow:0 10px 30px #0006}
+  #tip .k{color:var(--dim);font-size:11px;margin-bottom:3px}
+  #tip .tags{margin-top:6px;color:#79a6d8;font-size:11px}
+  #panel{position:fixed;right:18px;bottom:60px;width:300px;max-height:52vh;overflow:auto;background:rgba(9,14,25,.97);
+    border:1px solid #26374f;border-radius:12px;padding:14px;font-size:12.5px;display:none;pointer-events:auto}
+  #panel h3{margin:0 0 6px;font-size:13px;color:#8fb8e8;font-weight:600}
+  #panel .row{color:var(--dim);font-size:11.5px;margin-top:5px}
+  #panel .row b{color:var(--ink);font-weight:500}
+  #panel .x{position:absolute;right:12px;top:10px;cursor:pointer;color:var(--dim)}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="hud" id="title">
+  <h1>小满的记忆 · <b>放射图</b></h1>
+  <p>内圈越具体，外圈越抽象：事件 → 事实 → 反思 → 话题 → 实体</p>
+</div>
+
+<div class="hud" id="legend"></div>
+
+<div class="hud" id="bar">
+  <input id="q" placeholder="搜索记忆 / 人名 / 关键词…">
+  <button id="spin" class="on">自动旋转</button>
+  <button id="reset">回正</button>
+  <span id="stat"></span>
+</div>
+
+<div id="tip"></div>
+<div id="panel"><span class="x" id="px">✕</span><div id="pbody"></div></div>
+
+<script>
+(function(){
+  "use strict";
+  var KIND = {
+    episode:    {label:'事件', color:'#5b9dff'},
+    fact:       {label:'事实', color:'#f5c04a'},
+    reflection: {label:'反思', color:'#b07cff'},
+    skill:      {label:'技能', color:'#4fd1a5'},
+    lesson:     {label:'道理', color:'#ff8f6b'},
+    other:      {label:'其他', color:'#8fa0bb'}
+  };
+  var TIER_R = {habit: 4.4, fading: 7.4, edge: 10.2};
+  var TIER_NAME = {habit:'习惯', fading:'可逐渐遗忘', edge:'边缘'};
+
+  var cv = document.getElementById('c'), ctx = cv.getContext('2d');
+  var W = 0, H = 0, DPR = Math.min(2, window.devicePixelRatio || 1);
+  function resize(){
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = W * DPR; cv.height = H * DPR;
+    cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener('resize', resize); resize();
+
+  // ---------- 数据 ----------
+  var SAMPLE = [
+    {id:1,text:'阿宁讨厌被叫笨蛋，也讨厌被说「你这样不行」',kind:'fact',tier:'habit',importance:0.92,hits:7,age_days:0.4,who:'阿宁',topic:'相处',entities:['阿宁']},
+    {id:2,text:'花钱让我和群友聊天是他自愿的，不必为此愧','kind':'fact',tier:'fading',importance:0.8,hits:2,age_days:1.2,who:'阿宁',topic:'钱',entities:['阿宁']},
+    {id:3,text:'半夜两点他还在写代码时，不要催他睡','kind':'lesson',tier:'fading',importance:0.75,hits:3,age_days:2.1,who:'阿宁',topic:'作息',entities:['阿宁']},
+    {id:4,text:'被骂的时候先别解释，先把对方的话复述一遍','kind':'skill',tier:'fading',importance:0.7,hits:1,age_days:3.4,who:'',topic:'冲突',entities:[]},
+    {id:5,text:'群里的阿吉喜欢被接梗，不喜欢被正经回答','kind':'episode',tier:'edge',importance:0.5,hits:0,age_days:9.0,who:'阿吉',topic:'群聊',entities:['阿吉','阳台种菜群']},
+    {id:6,text:'反思：我总在别人刚开口时抢着给建议','kind':'reflection',tier:'edge',importance:0.6,hits:1,age_days:12.5,who:'',topic:'自我',entities:[]},
+    {id:7,text:'每天问一句「吃了没」比长篇关心更有用','kind':'lesson',tier:'habit',importance:0.85,hits:9,age_days:0.9,who:'阿宁',topic:'关心',entities:['阿宁']}
+  ];
+  var mem = [], nodes = [], byId = {};
+  var kindsOff = {};
+
+  function layout(list){
+    mem = list;
+    nodes = []; byId = {};
+    var tiers = {habit:[], fading:[], edge:[]};
+    list.forEach(function(m){ (tiers[m.tier] || tiers.fading).push(m); });
+
+    var entCount = {};
+    list.forEach(function(m){ (m.entities||[]).forEach(function(e){ entCount[e] = (entCount[e]||0)+1; }); });
+    var ents = Object.keys(entCount).sort(function(a,b){ return entCount[b]-entCount[a]; }).slice(0, 14);
+
+    Object.keys(tiers).forEach(function(t){
+      var arr = tiers[t], R = TIER_R[t];
+      arr.forEach(function(m, i){
+        var a = (i / Math.max(1,arr.length)) * Math.PI * 2 + (t==='fading'?0.5:0) + (t==='edge'?1.1:0);
+        var y = (Math.sin(i * 2.3) * 0.55) + (t==='habit' ? 0.35 : 0);
+        var n = {id:m.id, m:m, x:Math.cos(a)*R, y:y, z:Math.sin(a)*R, r:0, kind:m.kind, tier:t, kindType:'mem'};
+        nodes.push(n); byId[m.id] = n;
+      });
+    });
+    // 实体孤岛（更外一圈）
+    ents.forEach(function(e, i){
+      var a = (i / Math.max(1,ents.length)) * Math.PI * 2;
+      nodes.push({id:'e:'+e, ent:e, count:entCount[e], x:Math.cos(a)*13.6, y:(i%2?0.7:-0.7), z:Math.sin(a)*13.6,
+                  r:0, kind:'other', tier:'edge', kindType:'ent'});
+    });
+    // 半径：重要度
+    nodes.forEach(function(n){
+      if (n.kindType==='ent') n.r = 3.4 + Math.min(6, n.count) * 1.15;
+      else n.r = 3.2 + (n.m.importance||0.5) * 8.2;
+    });
+
+    document.getElementById('stat').textContent =
+      '记忆 ' + list.length + ' 条 · 实体 ' + ents.length + ' 个';
+    buildLegend(list);
+  }
+
+  function buildLegend(list){
+    var counts = {};
+    list.forEach(function(m){ var k = KIND[m.kind] ? m.kind : 'other'; counts[k]=(counts[k]||0)+1; });
+    var el = document.getElementById('legend'); el.innerHTML = '';
+    Object.keys(KIND).forEach(function(k){
+      if (!counts[k]) return;
+      var d = document.createElement('div');
+      d.innerHTML = '<i style="background:'+KIND[k].color+'"></i>' + KIND[k].label + ' <span style="color:#5d6b84">'+counts[k]+'</span>';
+      d.onclick = function(){
+        kindsOff[k] = !kindsOff[k];
+        d.classList.toggle('off', !!kindsOff[k]);
+      };
+      el.appendChild(d);
+    });
+  }
+
+  // ---------- 交互 ----------
+  var rotY = 0.6, rotX = -0.32, zoom = 1, spin = true;
+  var drag = null, hover = null, pinned = null;
+  var tip = document.getElementById('tip'), panel = document.getElementById('panel'), pbody = document.getElementById('pbody');
+  document.getElementById('px').onclick = function(){ panel.style.display='none'; pinned=null; };
+
+  function project(n){
+    var cy = Math.cos(rotY), sy = Math.sin(rotY);
+    var x1 = n.x * cy - n.z * sy, z1 = n.x * sy + n.z * cy;
+    var cx = Math.cos(rotX), sx = Math.sin(rotX);
+    var y1 = n.y * cx - z1 * sx, z2 = n.y * sx + z1 * cx;
+    var d = 26, f = (H * 0.92) / (d + z2) * zoom;
+    return {x: W/2 + x1 * f, y: H*0.53 + y1 * f, s: f, z: z2};
+  }
+
+  cv.addEventListener('pointerdown', function(e){ drag = {x:e.clientX, y:e.clientY, moved:0}; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', function(e){
+    if (drag){
+      var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      drag.moved += Math.abs(dx) + Math.abs(dy);
+      rotY += dx * 0.006; rotX += dy * 0.004;
+      rotX = Math.max(-1.25, Math.min(1.25, rotX));
+      drag.x = e.clientX; drag.y = e.clientY;
+      return;
+    }
+    var best = null, bd = 1e9;
+    nodes.forEach(function(n){
+      if (kindsOff[n.kind]) return;
+      var p = project(n), dx = e.clientX - p.x, dy = e.clientY - p.y, dd = dx*dx+dy*dy;
+      if (dd < bd && dd < Math.pow(p.s * 0.14 + n.r * p.s * 0.0016 + 14, 2)){ bd = dd; best = n; }
+    });
+    hover = best;
+    if (best){
+      var p2 = project(best);
+      tip.style.display = 'block';
+      tip.style.left = Math.min(W - 350, p2.x + 16) + 'px';
+      tip.style.top = Math.min(H - 130, p2.y + 14) + 'px';
+      tip.innerHTML = best.kindType === 'ent'
+        ? '<div class="k">实体 · 出现 '+best.count+' 次</div><b>'+esc(best.ent)+'</b>'
+        : '<div class="k">'+KIND[best.kind?best.kind:'other'].label+' · '+TIER_NAME[best.tier]+' · 重要度 '+Math.round((best.m.importance||0)*100)+'%</div>'
+          + esc(best.m.text) + ((best.m.entities&&best.m.entities.length)?'<div class="tags">'+best.m.entities.join(' · ')+'</div>':'');
+    } else tip.style.display = 'none';
+  });
+  cv.addEventListener('pointerup', function(e){
+    var wasDrag = drag && drag.moved > 6;
+    drag = null;
+    if (wasDrag) return;
+    if (hover && hover.kindType === 'mem') showPanel(hover.m);
+    else { panel.style.display='none'; }
+  });
+  cv.addEventListener('wheel', function(e){
+    e.preventDefault();
+    zoom *= e.deltaY > 0 ? 0.92 : 1.08;
+    zoom = Math.max(0.45, Math.min(2.6, zoom));
+  }, {passive:false});
+
+  document.getElementById('spin').onclick = function(){ spin = !spin; this.classList.toggle('on', spin); };
+  document.getElementById('reset').onclick = function(){ rotY = 0.6; rotX = -0.32; zoom = 1; };
+  var qEl = document.getElementById('q');
+  var qHits = {};
+  qEl.addEventListener('input', function(){
+    var q = qEl.value.trim().toLowerCase();
+    qHits = {};
+    if (!q) return;
+    mem.forEach(function(m){
+      var hay = (m.text + ' ' + (m.topic||'') + ' ' + (m.who||'') + ' ' + (m.entities||[]).join(' ')).toLowerCase();
+      if (hay.indexOf(q) >= 0) qHits[m.id] = true;
+    });
+  });
+
+  function esc(s){ return String(s||'').replace(/[&<>]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
+
+  function showPanel(m){
+    pinned = m.id;
+    var k = KIND[m.kind] || KIND.other;
+    pbody.innerHTML =
+      '<h3>'+k.label+' · '+TIER_NAME[m.tier||'fading']+'</h3>'
+      + '<div>'+esc(m.text)+'</div>'
+      + '<div class="row">重要度 <b>'+Math.round((m.importance||0)*100)+'%</b>'
+      + (m.hits!=null? ' · 被想起 <b>'+m.hits+'</b> 次':'')
+      + (m.age_days!=null? ' · 龄期 <b>'+m.age_days+'</b> 天':'')+'</div>'
+      + (m.who? '<div class="row">因为谁 <b>'+esc(m.who)+'</b></div>':'')
+      + (m.topic? '<div class="row">在聊 <b>'+esc(m.topic)+'</b></div>':'')
+      + ((m.entities&&m.entities.length)? '<div class="row">实体 <b>'+m.entities.map(esc).join('、')+'</b></div>':'');
+    panel.style.display = 'block';
+  }
+
+  // ---------- 渲染 ----------
+  var t0 = performance.now();
+  function draw(){
+    var t = (performance.now() - t0) / 1000;
+    ctx.clearRect(0, 0, W, H);
+
+    // 星尘
+    for (var i = 0; i < 90; i++){
+      var a = i * 2.399 + t * 0.03, rr = 40 + (i * 37) % 520;
+      var sx = W/2 + Math.cos(a) * rr * (W/900), sy = H*0.55 + Math.sin(a * 1.7) * rr * 0.5;
+      ctx.globalAlpha = 0.06 + (i % 7) * 0.012;
+      ctx.fillStyle = '#9fc2ff';
+      ctx.fillRect(sx, sy, 1.6, 1.6);
+    }
+    ctx.globalAlpha = 1;
+
+    // 层级环
+    Object.keys(TIER_R).forEach(function(k){
+      var p = project({x:0,y:0,z:0});
+      var q = project({x:TIER_R[k],y:0,z:0});
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(120,150,200,.10)';
+      ctx.setLineDash([3,6]);
+      ctx.arc(p.x, p.y, Math.abs(q.x - p.x), 0, Math.PI*2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+
+    var ms = nodes.map(function(n){ return {n:n, p:project(n)}; })
+                  .sort(function(a,b){ return a.p.z - b.p.z; });
+
+    // 连线：实体 → 记忆
+    ctx.lineWidth = 0.7;
+    ms.forEach(function(o){
+      if (o.n.kindType !== 'ent') return;
+      mem.forEach(function(m){
+        if ((m.entities||[]).indexOf(o.n.ent) < 0) return;
+        var tgt = byId[m.id]; if (!tgt) return;
+        var p2 = project(tgt);
+        ctx.strokeStyle = 'rgba(122,160,215,' + (0.05 + 0.03 * Math.min(3, o.n.count)) + ')';
+        ctx.beginPath(); ctx.moveTo(o.p.x, o.p.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+      });
+    });
+
+    // 节点
+    ms.forEach(function(o){
+      var n = o.n, p = o.p;
+      var dim = (kindsOff[n.kind] === true) ? 0.08 : 1;
+      var hit = pinned === n.id ? 1 : (qHits[n.id] ? 1 : (qEl.value.trim() ? 0.18 : 1));
+      var alpha = dim * hit;
+      var col = KIND[n.kind] ? KIND[n.kind].color : KIND.other.color;
+      var r = Math.max(2, (n.kindType==='ent' ? 2.6 : (2.2 + n.r * 0.34)) * (p.s / 24) * 2.2);
+
+      if (n.kindType === 'ent'){
+        ctx.globalAlpha = alpha * 0.85;
+        ctx.strokeStyle = '#7fd6b8';
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y - r); ctx.lineTo(p.x + r, p.y); ctx.lineTo(p.x, p.y + r); ctx.lineTo(p.x - r, p.y);
+        ctx.closePath(); ctx.stroke();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = 'rgba(90,200,170,.75)';
+        ctx.font = '11px -apple-system,"PingFang SC",sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(n.ent, p.x, p.y - r - 6);
+        return;
+      }
+
+      // 光晕
+      var g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 3.2);
+      g.addColorStop(0, hexA(col, 0.30 * alpha));
+      g.addColorStop(0.55, hexA(col, 0.10 * alpha));
+      g.addColorStop(1, hexA(col, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(p.x, p.y, r * 3.2, 0, Math.PI*2); ctx.fill();
+
+      // 本体
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI*2); ctx.fill();
+
+      if (pinned === n.id){
+        ctx.globalAlpha = 1; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.arc(p.x, p.y, r + 5, 0, Math.PI*2); ctx.stroke();
+      }
+      if (qHits[n.id]){
+        ctx.globalAlpha = 1; ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(p.x, p.y, r + 3.5, 0, Math.PI*2); ctx.stroke();
+      }
+    });
+    ctx.globalAlpha = 1;
+
+    if (spin && !drag) rotY += 0.0016;
+    requestAnimationFrame(draw);
+  }
+
+  function hexA(hex, a){
+    var n = parseInt(hex.slice(1), 16);
+    return 'rgba(' + ((n>>16)&255) + ',' + ((n>>8)&255) + ',' + (n&255) + ',' + a + ')';
+  }
+
+  // ---------- 载入 ----------
+  fetch('memories.jsonl', {cache:'no-store'})
+    .then(function(r){ if (!r.ok) throw 0; return r.text(); })
+    .then(function(txt){
+      var rows = txt.trim().split(/\n+/).map(function(l){ return JSON.parse(l); });
+      layout(rows.length ? rows : SAMPLE);
+    })
+    .catch(function(){ layout(SAMPLE); });
+
+  layout(SAMPLE);
+  draw();
+})();
+</script>
+</body>
+</html>

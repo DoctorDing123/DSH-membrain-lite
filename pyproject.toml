@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "membrain-lite"
+version = "0.1.0"
+description = "最小可跑的记忆内核：会记、会想、会忘"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "membrain-lite contributors" }]
+keywords = ["memory", "chatbot", "llm", "forgetting-curve", "sqlite"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+embed = ["sentence-transformers>=2.2"]
+
+[project.scripts]
+membrain = "membrain.cli:main"
+
+[tool.setuptools]
+packages = ["membrain"]

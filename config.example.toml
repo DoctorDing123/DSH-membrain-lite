@@ -1,0 +1,26 @@
+# 复制成 config.toml 再改
+root = "./.membrain"     # 数据目录（库、镜像、日志都在这）
+owner_name = "阿宁"
+bot_name = "小满"
+port = 8765
+dedup_similarity = 0.92  # 超过这个相似度认为重复，只加一次「被想起」
+
+[weights]                # 五路打分，和必须约等于 1
+semantic = 0.18
+keyword = 0.46
+importance = 0.14
+recency = 0.11
+graph = 0.11
+
+[decay]
+recency_half_life_days = 14.0   # 新鲜度衰减（不是 kind 半衰期）
+habit_strength = 0.62
+fading_strength = 0.38
+archive_after_days = 400
+
+[decay.kind_half_life]
+fact = 365
+lesson = 240
+skill = 180
+episode = 21
+reflection = 60
