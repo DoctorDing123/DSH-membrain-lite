@@ -35,6 +35,8 @@
 > `python3 -m membrain demo && python3 -m membrain export --out examples/radial/memories.jsonl && python3 -m http.server 8766`，
 > 然后打开 <http://127.0.0.1:8766/examples/radial/>。
 > 需要 Python 3.9+，除了标准库什么都不用装。
+> （想用 `config.toml` 改权重/半衰期的话要 3.11+：读配置用的是 `tomllib`，
+> 低版本会**静默忽略**配置文件、只跑默认值。）
 
 ---
 
