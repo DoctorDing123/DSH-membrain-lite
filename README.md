@@ -201,11 +201,14 @@ printf '%s\n' \
 
 **[`docs/AGENT-GUIDE.md`](docs/AGENT-GUIDE.md) —— 写给 AI agent 的安装与维护指南（中文）**
 **[`docs/AGENT-GUIDE.en.md`](docs/AGENT-GUIDE.en.md) —— Agent Install & Maintenance Guide (English)**
+**[`docs/SETUP-CHECK.md`](docs/SETUP-CHECK.md) —— 设置阶段自检清单（命令版，专治 404 / 死引用）**
 
 两份内容逐节对应，按你的 agent 习惯的语言挑一份就行；每份顶部都链着另一份。
 
 那里面是机器视角的完整流程：
 
+- **开始干活之前先跑 [`docs/SETUP-CHECK.md`](docs/SETUP-CHECK.md)**：一条 `python scripts/check_links.py`
+  把文档里的死链、缺文件和骨架缺失全打出来，有 404 当场修或替换，别带着坏引用往前做；
 - 怎么装、怎么验活、`cordis.patch.yml` 里 `serverName` 不能跟已有的 `memory` 重名；
 - 文件怎么摆（代码 / 数据 / 备份三分，只有 `brain.sqlite` 必须备份）；
 - 什么该 `remember`、什么别记、`kind` 和 `importance` 怎么给、`scope` 为什么是硬规矩；
@@ -254,7 +257,7 @@ tests/         单元测试
 examples/radial/  记忆放射图网页（零依赖）
 docs/          架构说明、隐私说明、**给 AI agent 的安装指南（中 / 英）**
 scripts/       backup.py（一致性快照备份 + 轮转）、import_from_old_store.py（从旧库迁移）、
-               check_privacy.py（公开前查隐私）
+               check_privacy.py（公开前查隐私）、check_links.py（设置阶段查死链/缺文件）
 ```
 
 ---

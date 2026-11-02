@@ -43,6 +43,21 @@ cd DSH-membrain-lite
 
 No git? Download the ZIP and unzip it. **Do not `pip install`** — just `cd` into the folder.
 
+### 1.1.5 Self-check before you touch anything (do not skip)
+
+Before changing a single file, run the command checklist: **[`docs/SETUP-CHECK.md`](SETUP-CHECK.md)**.
+
+The one-line version is
+
+```bash
+python scripts/check_links.py
+```
+
+It reports every **dead link / missing file / missing skeleton file** in the docs
+(`file:line → target → reason`). **Fix or replace whatever 404s, get exit 0, then continue.**
+The repair order (repoint → substitute → downgrade to plain text → record under "Known issues")
+lives in SETUP-CHECK; follow it, and never make the check pass by deleting links.
+
 ### 1.2 Smoke-test it first
 
 ```bash
