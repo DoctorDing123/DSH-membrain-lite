@@ -149,6 +149,22 @@
 
   // ---------- 交互 ----------
   var rotY = 0.6, rotX = -0.32, zoom = 1, spin = true;
+
+  // URL hash 可固定视角：#yaw=120&pitch=-20&auto=0&zoom=1.1
+  (function(){
+    var q = {};
+    (location.hash || '').replace(/^#/, '').split('&').forEach(function(kv){
+      if (!kv) return;
+      var i = kv.indexOf('=');
+      if (i < 0) return;
+      q[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1));
+    });
+    var n;
+    if (q.yaw !== undefined){ n = parseFloat(q.yaw); if (isFinite(n)) rotY = n * Math.PI / 180; }
+    if (q.pitch !== undefined){ n = parseFloat(q.pitch); if (isFinite(n)) rotX = Math.max(-1.25, Math.min(1.25, n * Math.PI / 180)); }
+    if (q.zoom !== undefined){ n = parseFloat(q.zoom); if (isFinite(n) && n > 0.2 && n < 3) zoom = n; }
+    if (q.auto === '0' || q.spin === '0') spin = false;
+  })();
   var drag = null, hover = null, pinned = null;
   var tip = document.getElementById('tip'), panel = document.getElementById('panel'), pbody = document.getElementById('pbody');
   document.getElementById('px').onclick = function(){ panel.style.display='none'; pinned=null; };

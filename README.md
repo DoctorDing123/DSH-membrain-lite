@@ -16,15 +16,29 @@
 
 ---
 
-## 快速开始
+## 三分钟上手（傻瓜版）
+
+不想装、不想配、不想懂 Python 也行：
+
+1. 点右上角绿色的 **Code → Download ZIP**，解压到任意文件夹；
+2. 双击里面的 **`一键体验.bat`**（Windows）；
+3. 浏览器会自动打开一张会转的图 —— 那就是它的记忆长什么样。
+
+脚本做的事：写入 29 条示例记忆 → 导成图用的数据 → 起一个本地网页 → 打开浏览器。
+关掉那个黑窗口，服务就停了。
+
+> macOS / Linux 用户：终端里进到目录，跑
+> `python3 -m membrain demo && python3 -m membrain export --out examples/radial/memories.jsonl && python3 -m http.server 8766`，
+> 然后打开 <http://127.0.0.1:8766/examples/radial/>。
+> 需要 Python 3.9+，除了标准库什么都不用装。
+
+---
+
+## 命令行怎么用
 
 ```bash
-git clone <仓库地址>
-# 或直接下载 zip 解压
-cd membrain-lite
-
 python -m membrain init          # 建库
-python -m membrain demo          # 写入 8 条示例记忆
+python -m membrain demo          # 写入 29 条示例记忆
 python -m membrain recall "阿宁讨厌什么" --explain
 python -m membrain eval          # 跑评估集
 ```
@@ -163,14 +177,20 @@ examples/radial/  记忆放射图网页（零依赖）
 - 菱形孤岛是**实体**（人、群、话题），连线表示这条记忆提到了它；
 - 拖拽旋转、滚轮缩放、悬停看详情、点图例按类型隐藏、搜索框高亮命中。
 
-![记忆放射图](docs/screenshot-radial.png)
+![记忆放射图，会自动旋转](docs/radial-spin.gif)
 
-跑起来（导出当前库再打开页面）：
+（静态版：[docs/screenshot-radial.png](docs/screenshot-radial.png)）
+
+跑起来，一行就够（Windows 之外）：
 
 ```bash
-python -m membrain demo
-python -m membrain export --out examples/radial/memories.jsonl
-python -m http.server 8766           # 然后打开 http://127.0.0.1:8766/examples/radial/
+python -m membrain demo && python -m membrain export --out examples/radial/memories.jsonl && python -m http.server 8766
+```
+
+Windows 直接双击 `一键体验.bat`。想看某个固定角度，可以加 URL 参数：
+
+```
+http://127.0.0.1:8766/examples/radial/#yaw=120&pitch=-18&auto=0&zoom=1.1
 ```
 
 页面直接 `fetch('memories.jsonl')`；直接双击打开（`file://`）会被浏览器拦，
