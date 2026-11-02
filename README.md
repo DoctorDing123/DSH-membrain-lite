@@ -14,6 +14,10 @@
 
 零依赖可跑（纯标准库 + SQLite），2 分钟能看到效果。
 
+> 🤖 **如果你是一个 AI agent（DSH / Claude / Codex / Cursor），先读 [`docs/AGENT-GUIDE.md`](docs/AGENT-GUIDE.md)。**
+> 那里面是给机器看的：怎么装、文件怎么摆、什么该记什么不该记、怎么调参、
+> 以及**装完之后该跟你的主人说什么**。这份 README 是给人看的。
+
 ---
 
 ## 三分钟上手（傻瓜版）
@@ -189,6 +193,25 @@ printf '%s\n' \
 
 ---
 
+## 让别人家的 AI 自己装
+
+如果你不想自己动手，可以把仓库链接丢给你的 AI（DSH / Claude / Codex 都行），让它读：
+
+**[`docs/AGENT-GUIDE.md`](docs/AGENT-GUIDE.md) —— 写给 AI agent 的安装与维护指南**
+
+那里面是机器视角的完整流程：
+
+- 怎么装、怎么验活、`cordis.patch.yml` 里 `serverName` 不能跟已有的 `memory` 重名；
+- 文件怎么摆（代码 / 数据 / 备份三分，只有 `brain.sqlite` 必须备份）；
+- 什么该 `remember`、什么别记、`kind` 和 `importance` 怎么给、`scope` 为什么是硬规矩；
+- 怎么用 `eval` 驱动优化，而不是凭感觉调参；
+- 一张真实踩过的坑表（BOM、`sqlite3.Row`、去重、跨会话泄漏……）；
+- **最后一段是「请转告你的主人」**：一段可以直接念给主人听的白话，加 5 条要提醒的事。
+
+零依赖、不改你的说话习惯、数据只在自己机器上——这几句 AI 会替你解释清楚。
+
+---
+
 ## 话术模板
 
 `prompts/` 下是配套的基础话术，直接抄进你的 system prompt：
@@ -224,6 +247,7 @@ data/          seed_demo.jsonl 示例数据（29 条）
 eval/          cases.jsonl 评估集
 tests/         单元测试
 examples/radial/  记忆放射图网页（零依赖）
+docs/          架构说明、隐私说明、**给 AI agent 的安装指南**
 ```
 
 ---
