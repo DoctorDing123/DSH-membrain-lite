@@ -136,14 +136,52 @@ config.toml        # 从 config.example.toml 复制，别提交真实配置
 
 ### 2.3 备份
 
-一天一次就够，**SQLite 直接拷文件**（不要在有写入时拷，先停掉 DSH 或选空闲）：
+一天一次就够。**别用文件复制**——正在写的时候直接拷可能拿到半截的库。用仓库里的脚本，
+它走 SQLite 的 `backup()` API 做一致性快照，写的时候也安全，还会**自动校验条数**：
 
-```
-复制 brain.sqlite → 备份目录/brain-YYYYMMDD.sqlite
-保留最近 14 份
+```bash
+python scripts/backup.py              # → <数据目录>/backups/brain-YYYYMMDD-HHMMSS.sqlite，留最近 14 份
+python scripts/backup.py --keep 30    # 留 30 份
+python scripts/backup.py --to D:\bak  # 换地方（另一个盘 / 网盘同步目录）
+python scripts/backup.py --list       # 只看现有备份
 ```
 
-真实规模参照：三年日常聊天大概几百 MB 以内，几百 MB 的 SQLite 拷一下是秒级。
+定时跑：Windows 用「任务计划程序」（每天 03:00，动作填 `python <仓库>\scripts\backup.py`），
+Linux/macOS 用 `crontab -e` 加 `0 3 * * * cd ~/membrain-lite && python scripts/backup.py`。
+
+真实规模参照：三年日常聊天大概几百 MB 以内，几百 MB 的 SQLite 备份一下是秒级。
+
+### 2.4 从旧库迁移（原来就有记忆的话）
+
+如果你不是从零开始，而是手里已经有一支自己写的记忆库（一张 `memories` 表，可能还带
+`meta` JSON 里的 `chat` 字段），用仓库里的迁移脚本，**不要手写循环**：
+
+```bash
+# 1) 先看会导什么、跳过什么（不写盘，最安全）
+python scripts/import_from_old_store.py --from ~/old/brain.db --dry --scan-secrets
+
+# 2) 确认分布和抽样没问题，再实跑（写进 MEMBRAIN_HOME 指向的库）
+python scripts/import_from_old_store.py --from ~/old/brain.db
+```
+
+脚本默认这样判断，不符合就跑 `--dry` 看哪一类被跳过：
+
+| 旧数据 | 去向 |
+|---|---|
+| `chat` 是 `group:*` | 原样作为 `scope` 导入 |
+| `chat` 是 `private:*` | **默认不导**（跨会话泄漏最严重）；点名才导：`--private-allow private:100000002` |
+| 没有 `chat`，`source` 是 `agent` 一类 | 归到 `scope=self`（机器人自身的工作方式） |
+| `status='archived'` / 空文本 | 跳过 |
+| `kind` 是旧叫法 | `procedural→skill`、`change→reflection`、`preference/topic/relation→fact` |
+
+两个细节，都踩过：
+
+1. **旧库通常没记「被想起多少次」**，导进来会全部落在 fading 层，明明是天天提的事看起来像第一次听说。
+   脚本默认按 `importance` 反推一个 `hits`（`round(importance×6)`，0.86 → 5 次，够进习惯层），
+   不需要就加 `--no-backfill`。
+2. **号码不要手动删**。QQ 号、群号、条目编号正是「认人」的依据。本地库原样留着，
+   等哪天要公开这支库之前，跑 `python scripts/check_privacy.py` 把它们列出来再决定。
+
 
 ---
 

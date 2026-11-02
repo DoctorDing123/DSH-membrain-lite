@@ -253,6 +253,8 @@ eval/          cases.jsonl 评估集
 tests/         单元测试
 examples/radial/  记忆放射图网页（零依赖）
 docs/          架构说明、隐私说明、**给 AI agent 的安装指南（中 / 英）**
+scripts/       backup.py（一致性快照备份 + 轮转）、import_from_old_store.py（从旧库迁移）、
+               check_privacy.py（公开前查隐私）
 ```
 
 ---

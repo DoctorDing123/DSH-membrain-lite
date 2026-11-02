@@ -148,15 +148,56 @@ Run the privacy check (5.5) before every commit.
 
 ### 2.3 Backups
 
-Once a day is enough. **Copy the SQLite file** while nothing is writing (stop DSH or pick an idle moment):
+Once a day is enough. **Do not copy the file** — a plain copy taken mid-write can be a torn
+database. Use the bundled script: it goes through SQLite's `backup()` API for a consistent
+snapshot (safe while writing) and **verifies the row count** afterwards.
 
-```
-brain.sqlite → backup/brain-YYYYMMDD.sqlite
-keep the last 14
+```bash
+python scripts/backup.py              # → <data dir>/backups/brain-YYYYMMDD-HHMMSS.sqlite, keeps the last 14
+python scripts/backup.py --keep 30    # keep 30
+python scripts/backup.py --to D:\bak  # somewhere else (another disk / a synced folder)
+python scripts/backup.py --list       # just list what exists
 ```
 
-Real-world size: three years of daily chat stays under a few hundred MB; copying that is a
-sub-second operation.
+Schedule it: on Windows use Task Scheduler (daily 03:00, action `python <repo>\scripts\backup.py`);
+on Linux/macOS add `0 3 * * * cd ~/membrain-lite && python scripts/backup.py` to `crontab -e`.
+
+Real-world size: three years of daily chat stays under a few hundred MB; backing that up takes a
+second.
+
+### 2.4 Migrating from an older store
+
+If you are not starting from scratch but already have your own memory database (one `memories`
+table, possibly with `chat` inside a `meta` JSON blob), use the importer — **do not hand-roll a loop**:
+
+```bash
+# 1) See what would be imported and what would be skipped (writes nothing)
+python scripts/import_from_old_store.py --from ~/old/brain.db --dry --scan-secrets
+
+# 2) Once the distribution and samples look right, run it for real
+python scripts/import_from_old_store.py --from ~/old/brain.db
+```
+
+The defaults are:
+
+| Old data | Destination |
+|---|---|
+| `chat` is `group:*` | imported with that value as `scope` |
+| `chat` is `private:*` | **skipped by default** (cross-conversation leakage is the worst failure); opt in with `--private-allow private:100000002` |
+| no `chat`, `source` looks like `agent` | goes to `scope=self` (the bot's own working habits) |
+| `status='archived'` / empty text | skipped |
+| legacy `kind` values | `procedural→skill`, `change→reflection`, `preference/topic/relation→fact` |
+
+Two details, both learned the hard way:
+
+1. **Old stores rarely record how often a memory was recalled**, so everything lands in the
+   `fading` tier — things you mention daily look like first-time hearsay. The importer backfills
+   `hits = round(importance × 6)` by default (0.86 → 5, enough for the habit tier); pass
+   `--no-backfill` to skip.
+2. **Do not strip phone/QQ numbers by hand.** Those IDs are exactly how the bot tells people apart.
+   Keep them locally, and when you eventually want to publish the database, run
+   `python scripts/check_privacy.py` first to list them.
+
 
 ---
 
